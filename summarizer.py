@@ -28,15 +28,6 @@ class Edge:
 		self.Vertex2 = None
 		self.Weight = 0
 
-class WordType:
-	Content=0
-	Function=1
-	ContentPunctuation=2
-	FunctionPunctuation=3
-
-class Word:
-	def __init__(self):
-		self.Text=''
 # sentence structure
 class Sentence:
 
