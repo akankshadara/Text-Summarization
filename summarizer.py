@@ -37,7 +37,7 @@ class WordType:
 class Word:
 	def __init__(self):
 		self.Text=''
-
+# sentence structure
 class Sentence:
 
 	def __init__(self):
