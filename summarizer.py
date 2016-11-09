@@ -341,14 +341,6 @@ class Summarizer:
 		# returns a dictionary of keywords and corresponding term frequencies
 		return word_freq
 
-	# computing the inverse document frequency
-	def compute_idf(self, tokenized_documents):
-		idf_values = {}
-		all_tokens_set = set([item for sublist in tokenized_documents for item in sublist])
-		for tkn in all_tokens_set:
-			contains_token = map(lambda doc: tkn in doc, tokenized_documents)
-			idf_values[tkn] = math.log(len(tokenized_documents)/(sum(contains_token)))
-		return idf_values
 
 	def getTitleScore(self, title, sentence):
 		titleWords = remove_stop_words(title)
@@ -356,11 +348,6 @@ class Summarizer:
 		matchedWords = [word for word in sentenceWords if word in titleWords]
 
 		return len(matchedWords) / (len(title) * 1.0)
-
-	# sentence length score
-	def getSentenceLengthScore(self, sentence):
-		ideal_length = 15
-		return (abs(ideal_length - len(sentence))/ ideal_length) * 2
 
 	def sentence_ranker(self, sentences, score_from_graph_summary_dict, AMPLITUDE_FACTOR, TF_FACTOR):
 		# returns a dictionary of ranked sentences
