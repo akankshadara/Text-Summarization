@@ -5,6 +5,14 @@ from nltk import word_tokenize,sent_tokenize
 from collections import OrderedDict
 import collections
 tokenizer = nltk.data.load('nltk:tokenizers/punkt/english.pickle')
+from nltk.corpus import brown
+import parser
+try:
+    import matplotlib.pyplot as plt
+except:
+    raise
+
+import networkx as nx
 
 # create a graph with sentences as its vertices
 class Graph:
@@ -28,7 +36,6 @@ class Edge:
 		self.Vertex2 = None
 		self.Weight = 0
 
-# sentence structure
 class Sentence:
 
 	def __init__(self):
@@ -61,8 +68,11 @@ class Parser:
 		for sentence in para:
 			tokenized_sentences.append(sent_tokenize(sentence))
 
+		i = 0
 		tokenized_sentences = [item for sublist in tokenized_sentences for item in sublist]
-		# print tokenized_sentences
+		# for t in tokenized_sentences:
+		# 	print str(i) + " " + t 
+		# 	i = i + 1
 		return tokenized_sentences
 
 	def remove_punctuations(self, text_string):
@@ -77,8 +87,9 @@ class Parser:
 
 	def remove_stop_words(self, document):
 		# defining a stop word list
-		document = document[0].split(" ")
 		# print document
+		document = document[0].split(" ")
+		
 		words_file = "stop_words.txt"
 		stop_word_list = []
 		stop_word_list = [word for line in open(words_file, 'r') for word in line.split(",")]
@@ -114,10 +125,15 @@ class Reduction:
 
 	def getSentences(self, tokenized_sentences):
 		sentences = []
+
 		for t in tokenized_sentences:
+			x = []
+			x.append(str(t))
+			tokens = parser.word_tokenizer(x)
+			# print tokens
 			sentence = Sentence()
 			sentence.s = t
-			sentence.keywords = parser.word_tokenizer(t)
+			sentence.keywords = tokens
 			sentences.append(sentence)
 		
 		return sentences
@@ -141,24 +157,56 @@ class Reduction:
 		norm = normalised1 + normalised2
 		if norm == 0:
 			return 0
+		# print str(sentence1.s) + "\n" + str(sentence2.s) + "\n" + str(weight) + "\n"
 		return weight / float(norm)
 
 	def buildGraph(self, sentences):
 		g = Graph()
+		G=nx.Graph()
+		dict = {}
 		for s in sentences:
 			v = Vertex()
 			v.Sentence = s
 			g.Vertices.append(v)
 			# print v, v.Sentence
+			i1 = 1
+			j1 = 1
 		for i in g.Vertices:
 			for j in g.Vertices:
 				if i != j:
 					w = self.findWeight(i.Sentence, j.Sentence)
 					e = Edge()
+					if (w != 0):
+						dict[i.Sentence.s,j.Sentence.s] = w
 					e.Vertex1 = i
 					e.Vertex2 = j
 					e.Weight = w
 					g.Edges.append(e)
+				else: 
+					w = 0
+				G.add_edge(i1,j1,weight=w)
+				j1+=1
+			i1 += 1
+		
+		elarge=[(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] >0.5]
+		esmall=[(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] <=0.5]
+
+		pos=nx.spring_layout(G) # positions for all nodes
+
+		# nodes
+		nx.draw_networkx_nodes(G,pos,node_size=700)
+
+		# edges
+		nx.draw_networkx_edges(G,pos,edgelist=elarge, width=6)
+		nx.draw_networkx_edges(G,pos,edgelist=esmall, width=6,alpha=0.5,edge_color='b')
+
+		# labels
+		nx.draw_networkx_labels(G,pos,font_size= 8,font_family='sans-serif')
+
+		plt.axis('off')
+		plt.savefig("weighted_graph.png") # save as png
+		plt.show()
+		# print dict
 		return g
 
 	def sentenceRank(self, sentences):
@@ -239,6 +287,33 @@ class Summarizer:
 
 		return words_from_audio_dict
 	
+	def title_generator(self, tokenized_sentences, word_freq):
+		sentences = self.getSentences(tokenized_sentences)
+		propernouns=[]
+		for s in sentences:
+			tagged_sent=pos_tag(s.keywords)
+			propernouns.append([word for word,pos in tagged_sent if pos == 'NNP'])
+	        
+		max=0
+		
+		for p in propernouns:
+			if word_freq[p]>max:
+				max=word_freq[p]
+				noun=p
+
+		adj=[]
+		for s in sentences:
+			if noun in s.keywords:
+				tagged_sent=pos_tag(s.keywords)
+				adj.append([word for word,pos in tagged_sent if pos == 'ADJ'])
+
+		max=0
+		for a in adj:
+	 		if word_freq[a]>max:
+				max=word_freq[p]
+				adjective=a
+
+		return adjective+" "+noun
 	
 	def sentence_ranker(self, sentences, score_from_graph_summary_dict, AMPLITUDE_FACTOR, TF_FACTOR):
 		# returns a dictionary of ranked sentences
@@ -279,6 +354,10 @@ class Summarizer:
 		top_sentences =  dict(collections.Counter(input).most_common(length))
 		# print top_sentences
 		summary_file = open("summary.txt", "w") 
+		# title=self.title_generator(tokenized_sentences, tf_dictionary, )
+		# print title
+		# summary_file.write(heading)
+		# summary_file.write("\n")
 		summary = ""
 		for s in tokenized_sentences:
 			try:		
@@ -290,7 +369,7 @@ class Summarizer:
 			except:
 				pass
 		# print "summary generated in file..."
-		# print summary
+		print len(tokenized_sentences)
 		summary_file.close()
 		return summary
 	# get top keywords
